@@ -143,7 +143,7 @@ def generateFilterString(userToken):
     return None
 
 
-def prepare_body_headers_with_data(request, systemMsg="Intent"):
+def prepare_body_headers_with_data(request, systemMsg="Chat"):
     request_messages = request.json["messages"]
 
     # Set query type
@@ -289,14 +289,14 @@ def stream_without_data(response, history_metadata={}):
         yield format_as_ndjson(response_obj)
 
 
-def conversation_without_data(request_body, systemMsg="Intent"):
+def conversation_without_data(request_body, systemMsg="Chat"):
     openai.api_type = "azure"
     openai.api_base = AZURE_OPENAI_ENDPOINT if AZURE_OPENAI_ENDPOINT else f"https://{AZURE_OPENAI_RESOURCE}.openai.azure.com/"
     openai.api_version = "2023-03-15-preview"
     openai.api_key = AZURE_OPENAI_KEY
 
     system_msg = AZURE_OPENAI_SYSTEM_MESSAGE
-    if system_msg == "Intent":
+    if systemMsg == "Intent":
         system_msg = AZURE_OPENAI_SYSTEM_MESSAGE_INTENT
     
     request_messages = request_body["messages"]
@@ -348,18 +348,19 @@ def conversation_without_data(request_body, systemMsg="Intent"):
 @app.route("/conversation", methods=["GET", "POST"])
 def conversation():
     request_body = request.json
-    return conversation_internal(request_body)
+    # return conversation_internal(request_body)
+    return conversation_intent(request_body)
 
-# def conversation_intent(request_body):
-#     try:
-#         use_data = should_use_data()
-#         if use_data:
-#             return conversation_with_data(request_body)
-#         else:
-#             return conversation_without_data(request_body, "Intent")
-#     except Exception as e:
-#         logging.exception("Exception in /conversation")
-#         return jsonify({"error": str(e)}), 500
+def conversation_intent(request_body):
+    try:
+        use_data = should_use_data()
+        if use_data:
+            return conversation_with_data(request_body)
+        else:
+            return conversation_without_data(request_body, "Intent")
+    except Exception as e:
+        logging.exception("Exception in /conversation")
+        return jsonify({"error": str(e)}), 500
 
 def conversation_internal(request_body):
     try:
