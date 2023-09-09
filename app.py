@@ -54,6 +54,7 @@ AZURE_OPENAI_TOP_P = os.environ.get("AZURE_OPENAI_TOP_P", 1.0)
 AZURE_OPENAI_MAX_TOKENS = os.environ.get("AZURE_OPENAI_MAX_TOKENS", 1000)
 AZURE_OPENAI_STOP_SEQUENCE = os.environ.get("AZURE_OPENAI_STOP_SEQUENCE")
 AZURE_OPENAI_SYSTEM_MESSAGE = os.environ.get("AZURE_OPENAI_SYSTEM_MESSAGE", "You are an AI assistant that helps people find information.")
+AZURE_OPENAI_SYSTEM_MESSAGE_INTENT = os.environ.get("AZURE_OPENAI_SYSTEM_MESSAGE_INTENT")
 AZURE_OPENAI_PREVIEW_API_VERSION = os.environ.get("AZURE_OPENAI_PREVIEW_API_VERSION", "2023-06-01-preview")
 AZURE_OPENAI_STREAM = os.environ.get("AZURE_OPENAI_STREAM", "true")
 AZURE_OPENAI_MODEL_NAME = os.environ.get("AZURE_OPENAI_MODEL_NAME", "gpt-35-turbo-16k") # Name of the model, e.g. 'gpt-35-turbo-16k' or 'gpt-4'
@@ -142,7 +143,7 @@ def generateFilterString(userToken):
     return None
 
 
-def prepare_body_headers_with_data(request):
+def prepare_body_headers_with_data(request, systemMsg="Intent"):
     request_messages = request.json["messages"]
 
     # Set query type
@@ -152,6 +153,10 @@ def prepare_body_headers_with_data(request):
     elif AZURE_SEARCH_USE_SEMANTIC_SEARCH.lower() == "true" and AZURE_SEARCH_SEMANTIC_SEARCH_CONFIG:
         query_type = "semantic"
 
+    system_msg = AZURE_OPENAI_SYSTEM_MESSAGE
+    # Set system message
+    if systemMsg == "Intent":
+        system_msg = AZURE_OPENAI_SYSTEM_MESSAGE_INTENT
     # Set filter
     filter = None
     userToken = None
@@ -184,7 +189,7 @@ def prepare_body_headers_with_data(request):
                     "topNDocuments": AZURE_SEARCH_TOP_K,
                     "queryType": query_type,
                     "semanticConfiguration": AZURE_SEARCH_SEMANTIC_SEARCH_CONFIG if AZURE_SEARCH_SEMANTIC_SEARCH_CONFIG else "",
-                    "roleInformation": AZURE_OPENAI_SYSTEM_MESSAGE,
+                    "roleInformation": system_msg,
                     "embeddingEndpoint": AZURE_OPENAI_EMBEDDING_ENDPOINT,
                     "embeddingKey": AZURE_OPENAI_EMBEDDING_KEY,
                     "filter": filter
@@ -284,17 +289,21 @@ def stream_without_data(response, history_metadata={}):
         yield format_as_ndjson(response_obj)
 
 
-def conversation_without_data(request_body):
+def conversation_without_data(request_body, systemMsg="Intent"):
     openai.api_type = "azure"
     openai.api_base = AZURE_OPENAI_ENDPOINT if AZURE_OPENAI_ENDPOINT else f"https://{AZURE_OPENAI_RESOURCE}.openai.azure.com/"
     openai.api_version = "2023-03-15-preview"
     openai.api_key = AZURE_OPENAI_KEY
 
+    system_msg = AZURE_OPENAI_SYSTEM_MESSAGE
+    if system_msg == "Intent":
+        system_msg = AZURE_OPENAI_SYSTEM_MESSAGE_INTENT
+    
     request_messages = request_body["messages"]
     messages = [
         {
             "role": "system",
-            "content": AZURE_OPENAI_SYSTEM_MESSAGE
+            "content": system_msg
         }
     ]
 
@@ -340,6 +349,17 @@ def conversation_without_data(request_body):
 def conversation():
     request_body = request.json
     return conversation_internal(request_body)
+
+# def conversation_intent(request_body):
+#     try:
+#         use_data = should_use_data()
+#         if use_data:
+#             return conversation_with_data(request_body)
+#         else:
+#             return conversation_without_data(request_body, "Intent")
+#     except Exception as e:
+#         logging.exception("Exception in /conversation")
+#         return jsonify({"error": str(e)}), 500
 
 def conversation_internal(request_body):
     try:
