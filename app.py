@@ -53,7 +53,7 @@ AZURE_OPENAI_TEMPERATURE = os.environ.get("AZURE_OPENAI_TEMPERATURE", 0)
 AZURE_OPENAI_TOP_P = os.environ.get("AZURE_OPENAI_TOP_P", 1.0)
 AZURE_OPENAI_MAX_TOKENS = os.environ.get("AZURE_OPENAI_MAX_TOKENS", 1000)
 AZURE_OPENAI_STOP_SEQUENCE = os.environ.get("AZURE_OPENAI_STOP_SEQUENCE")
-AZURE_OPENAI_SYSTEM_MESSAGE = os.environ.get("AZURE_OPENAI_SYSTEM_MESSAGE", "You are an AI assistant that helps people find information.")
+AZURE_OPENAI_SYSTEM_MESSAGE = os.environ.get("AZURE_OPENAI_SYSTEM_MESSAGE")#, "You are an AI assistant that helps people find information.")
 AZURE_OPENAI_SYSTEM_MESSAGE_INTENT = os.environ.get("AZURE_OPENAI_SYSTEM_MESSAGE_INTENT")
 AZURE_OPENAI_PREVIEW_API_VERSION = os.environ.get("AZURE_OPENAI_PREVIEW_API_VERSION", "2023-06-01-preview")
 AZURE_OPENAI_STREAM = os.environ.get("AZURE_OPENAI_STREAM", "true")
@@ -348,6 +348,8 @@ def conversation_without_data(request_body, systemMsg="Chat"):
 @app.route("/conversation", methods=["GET", "POST"])
 def conversation():
     request_body = request.json
+    logging.info(request_body)
+    internal_response = conversation_internal(request_body)
     # return conversation_internal(request_body)
     return conversation_intent(request_body)
 
@@ -355,8 +357,10 @@ def conversation_intent(request_body):
     try:
         use_data = should_use_data()
         if use_data:
+            logging.info("running conversation_intent with use_data -flag")
             return conversation_with_data(request_body)
         else:
+            logging.info("running conversation_intent without use_data -flag")
             return conversation_without_data(request_body, "Intent")
     except Exception as e:
         logging.exception("Exception in /conversation")
@@ -366,8 +370,10 @@ def conversation_internal(request_body):
     try:
         use_data = should_use_data()
         if use_data:
+            logging.info("running conversation_internal with use_data -flag")
             return conversation_with_data(request_body)
         else:
+            logging.info("running conversation_internal without use_data -flag")
             return conversation_without_data(request_body)
     except Exception as e:
         logging.exception("Exception in /conversation")
